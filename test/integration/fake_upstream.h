@@ -526,7 +526,7 @@ public:
   // Creates a fake upstream bound to the specified |address|.
   FakeUpstream(const Network::Address::InstanceConstSharedPtr& address,
                FakeHttpConnection::Type type, Event::TestTimeSystem& time_system,
-               bool enable_half_close = false);
+               bool enable_half_close = false, bool udp_fake_upstream = false);
 
   // Creates a fake upstream bound to INADDR_ANY and the specified |port|.
   FakeUpstream(uint32_t port, FakeHttpConnection::Type type, Network::Address::IpVersion version,

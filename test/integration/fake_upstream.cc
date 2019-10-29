@@ -357,7 +357,7 @@ FakeUpstream::FakeUpstream(const std::string& uds_path, FakeHttpConnection::Type
 
 static Network::SocketPtr
 makeTcpListenSocket(const Network::Address::InstanceConstSharedPtr& address) {
-  return Network::SocketPtr{new Network::TcpListenSocket(address, nullptr, true)};
+  return std::make_unique<Network::TcpListenSocket>(address, nullptr, true);
 }
 
 static Network::SocketPtr makeTcpListenSocket(uint32_t port, Network::Address::IpVersion version) {
@@ -365,14 +365,20 @@ static Network::SocketPtr makeTcpListenSocket(uint32_t port, Network::Address::I
       Network::Utility::parseInternetAddress(Network::Test::getAnyAddressString(version), port));
 }
 
+static Network::SocketPtr
+makeUdpListenSocket(const Network::Address::InstanceConstSharedPtr& address) {
+  return std::make_unique<Network::UdpListenSocket>(address, nullptr, true);
+}
+
 FakeUpstream::FakeUpstream(const Network::Address::InstanceConstSharedPtr& address,
                            FakeHttpConnection::Type type, Event::TestTimeSystem& time_system,
-                           bool enable_half_close)
-    : FakeUpstream(Network::Test::createRawBufferSocketFactory(), makeTcpListenSocket(address),
+                           bool enable_half_close, bool udp_fake_upstream)
+    : FakeUpstream(Network::Test::createRawBufferSocketFactory(),
+                   udp_fake_upstream ? makeUdpListenSocket(address) : makeTcpListenSocket(address),
                    type, time_system, enable_half_close) {
-  ENVOY_LOG(info, "starting fake server on socket {}:{}. Address version is {}",
+  ENVOY_LOG(info, "starting fake server on socket {}:{}. Address version is {}. UDP={}",
             address->ip()->addressAsString(), address->ip()->port(),
-            Network::Test::addressVersionAsString(address->ip()->version()));
+            Network::Test::addressVersionAsString(address->ip()->version()), udp_fake_upstream);
 }
 
 FakeUpstream::FakeUpstream(uint32_t port, FakeHttpConnection::Type type,
@@ -381,7 +387,7 @@ FakeUpstream::FakeUpstream(uint32_t port, FakeHttpConnection::Type type,
     : FakeUpstream(Network::Test::createRawBufferSocketFactory(),
                    makeTcpListenSocket(port, version), type, time_system, enable_half_close) {
   ENVOY_LOG(info, "starting fake server on port {}. Address version is {}",
-            this->localAddress()->ip()->port(), Network::Test::addressVersionAsString(version));
+            localAddress()->ip()->port(), Network::Test::addressVersionAsString(version));
 }
 
 FakeUpstream::FakeUpstream(Network::TransportSocketFactoryPtr&& transport_socket_factory,
@@ -390,7 +396,7 @@ FakeUpstream::FakeUpstream(Network::TransportSocketFactoryPtr&& transport_socket
     : FakeUpstream(std::move(transport_socket_factory), makeTcpListenSocket(port, version), type,
                    time_system, false) {
   ENVOY_LOG(info, "starting fake SSL server on port {}. Address version is {}",
-            this->localAddress()->ip()->port(), Network::Test::addressVersionAsString(version));
+            localAddress()->ip()->port(), Network::Test::addressVersionAsString(version));
 }
 
 FakeUpstream::FakeUpstream(Network::TransportSocketFactoryPtr&& transport_socket_factory,
